@@ -12,7 +12,7 @@ The agent uses public US DOT and FAA data. **Scores are computed by deterministi
 (Gemini, via Google ADK) understands the question, calls the right tool and explains the result, and an
 automatic check flags any number in the answer that did not come from the data.
 
-See **[docs/DESIGN.md](docs/DESIGN.md)** for the scoring methodology, tradeoffs and where AI is used.
+See **[DESIGN.md](DESIGN.md)** for the scoring methodology, tradeoffs and where AI is used.
 
 ---
 
@@ -88,7 +88,7 @@ backend/
 frontend/app.py        Streamlit chat UI (talks only to the backend)
 etl/                   scripts that built data/processed/ from BTS and OurAirports downloads
 data/processed/        small pre-processed tables (included – no need to run the ETL)
-docs/DESIGN.md         design document
+DESIGN.md              design document
 ```
 
 ## Rebuild the pre-processed data (optional)
