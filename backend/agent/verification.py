@@ -4,12 +4,14 @@ Automatic check: did the LLM invent numbers?
 Two ADK callbacks (functions ADK calls for us at fixed moments):
 1. remember_tool_numbers - after every tool call: save the numbers the tool returned.
 2. check_answer_numbers  - before the final answer goes out: every number in the
-   answer must be one of the saved numbers. If not, a warning is added to the answer.
+   answer must be one of the saved numbers (or the difference between two numbers
+   from the data shown in the same answer). If not, a warning is added to the answer.
 
 This check is plain code (deterministic) - no LLM involved.
 """
 
 import re
+from itertools import combinations
 from pathlib import Path
 
 from google.genai import types
@@ -54,6 +56,11 @@ def is_known(number, known_numbers):
     return any(abs(number - known) <= TOLERANCE * known for known in known_numbers)
 
 
+def is_difference(number, numbers):
+    """True if `number` is the difference between two of `numbers` (e.g. 0.5 = 8.7 - 8.2)."""
+    return any(is_known(number, [abs(a - b)]) for a, b in combinations(numbers, 2) if a != b)
+
+
 def readable(number):
     """How a number is shown in the warning: 40000000.0 -> "40,000,000", 82.3 -> "82.3"."""
     return f"{number:,.0f}" if number == int(number) else f"{number:,}"
@@ -96,7 +103,10 @@ def check_answer_numbers(callback_context, llm_response):
         + numbers_in_text(INSTRUCTIONS_TEXT)
     )
 
-    unknown = unknown_numbers(answer, known)
+    # Also allowed: a simple difference between two numbers that are in this answer
+    # and came from our data (e.g. "LAX is 0.5 points higher" for 8.7% vs 8.2%).
+    shown = [number for number in numbers_in_text(answer) if is_known(number, known)]
+    unknown = [number for number in unknown_numbers(answer, known) if not is_difference(number, shown)]
     if not unknown:
         return None  # None = send the answer as it is
 

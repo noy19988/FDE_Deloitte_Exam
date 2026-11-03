@@ -1,5 +1,5 @@
 """
-The agent: Gemini + instructions + our 6 tools.
+The agent: Gemini + instructions + our 7 tools.
 
 ADK runs the loop for us:
 question -> Gemini picks a tool -> ADK runs it -> Gemini reads the result -> answer.
@@ -13,6 +13,7 @@ from backend.agent.verification import check_answer_numbers, remember_tool_numbe
 from backend.config import GEMINI_MODEL
 from backend.tools.airport_tools import (
     compare_airports,
+    compare_numbers,
     get_airport_profile,
     live_status,
     long_haul_share,
@@ -35,6 +36,7 @@ root_agent = Agent(
         long_haul_share,
         unmet_demand,
         live_status,
+        compare_numbers,
     ],
     # Automatic check that the answer has no invented numbers (see verification.py).
     after_tool_callback=remember_tool_numbers,

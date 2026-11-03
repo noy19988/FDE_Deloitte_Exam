@@ -53,6 +53,9 @@ HIGH_CONFIDENCE_PASSENGERS = 1_000_000
 LONG_HAUL_MILES = 3000
 ALT_LONG_HAUL_MILES = 2500
 
+# Long-haul share from fewer flights than this gets "Medium" confidence (a few routes change it a lot).
+LONG_HAUL_MIN_FLIGHTS = 1000
+
 # A "healthy" load factor. Above it, we say seats are missing.
 TARGET_LOAD_FACTOR_PCT = 80
 

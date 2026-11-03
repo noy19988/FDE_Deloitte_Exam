@@ -81,7 +81,7 @@ backend/
   main.py              FastAPI: /chat, /sessions, /transcribe
   config.py            years, thresholds, default weights, database URL
   agent/               ADK agent, system prompt (instructions.md), automatic number check
-  tools/               the 6 tools the agent can call
+  tools/               the 7 tools the agent can call
   scoring/             all the math: metrics, percentiles, scores, special metrics
   data_sources/        live DOT and FAA API clients
   db/                  load data/processed/*.csv into PostgreSQL

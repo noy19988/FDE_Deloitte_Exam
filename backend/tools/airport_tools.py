@@ -1,5 +1,5 @@
 """
-The 6 tools the agent can call.
+The 7 tools the agent can call.
 
 Each tool is a normal Python function. The LLM reads the function name,
 the arguments and the docstring to decide when to call it - so the
@@ -10,8 +10,10 @@ All numbers come from code (deterministic). The LLM only explains them.
 
 import pandas as pd
 import requests
+from google.adk.tools import ToolContext
 
-from backend.config import DATA_YEAR, MIN_PASSENGERS, TARGET_LOAD_FACTOR_PCT, WEIGHTS
+from backend.agent.verification import is_known
+from backend.config import DATA_YEAR, LONG_HAUL_MIN_FLIGHTS, MIN_PASSENGERS, TARGET_LOAD_FACTOR_PCT, WEIGHTS
 from backend.data_sources.dot_api import get_yearly_traffic
 from backend.data_sources.faa_api import get_live_status
 from backend.db.database import engine
@@ -158,11 +160,21 @@ def long_haul_share(code: str) -> dict:
     match = routes[routes["code"] == code.upper()]
     if match.empty:
         return not_found(code)
+    route = match.iloc[0]
+
+    # Confidence by a fixed rule, like the other tools (so the LLM does not guess it).
+    flights = int(route["passenger_flights"] + route["cargo_flights"])
+    if flights >= LONG_HAUL_MIN_FLIGHTS:
+        confidence, reason = "High", f"full-year data from all US and foreign airlines ({flights:,} flights)"
+    else:
+        confidence, reason = "Medium", f"only {flights:,} flights in {DATA_YEAR}, so a few routes change the share a lot"
 
     return {
         "code": code.upper(),
         "year": DATA_YEAR,
-        **special.long_haul_share(match.iloc[0]),
+        **special.long_haul_share(route),
+        "confidence": confidence,
+        "confidence_reason": reason,
         "data_notes": [
             f"Source: BTS T-100 Segment {DATA_YEAR}, all US and foreign airlines.",
             "Distance = non-stop flight distance in miles. Counted by number of flights.",
@@ -207,6 +219,35 @@ def unmet_demand(code: str) -> dict:
         "data_notes": DATA_NOTES + [
             "Capacity gap is a lower estimate: people who gave up on flying are not in the data.",
         ],
+    }
+
+
+def compare_numbers(value_a: float, value_b: float, tool_context: ToolContext) -> dict:
+    """
+    Difference, ratio and percent difference between two numbers from the other tools.
+
+    You must not do arithmetic yourself, so call this when the user asks for one:
+    "how many more", "how much bigger", "what percent higher" and so on.
+    Example: "how many more passengers does LAX have than SFO?"
+    -> compare_numbers(value_a=36778508, value_b=26488386).
+    Do not call it to add differences the user did not ask for.
+
+    Args:
+        value_a: a number another tool returned (e.g. LAX passengers).
+        value_b: a number another tool returned (e.g. SFO passengers).
+    """
+    # Only numbers that came from our data, so an invented number cannot sneak in this way.
+    known = tool_context.state.get("known_numbers", [])
+    invented = [value for value in (value_a, value_b) if not is_known(abs(value), known)]
+    if invented:
+        return {"error": f"{invented} did not come from a tool result. Get the numbers from a tool first."}
+
+    return {
+        "value_a": value_a,
+        "value_b": value_b,
+        "difference": round(value_a - value_b, 1),
+        "ratio": round(value_a / value_b, 2) if value_b else None,
+        "percent_difference": round(100 * (value_a - value_b) / value_b, 1) if value_b else None,
     }
 
 

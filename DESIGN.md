@@ -15,7 +15,7 @@ The agent ranks and compares airports on that, explains why, and says clearly wh
  Streamlit chat UI  ──HTTP──►  FastAPI backend  ──►  ADK agent (Gemini)
  (text + voice)                 /chat /sessions        │  chooses a tool, explains the result
                                 /transcribe            ▼
-                                                 6 Python tools  ──►  deterministic scoring (pandas)
+                                                 7 Python tools  ──►  deterministic scoring (pandas)
                                                        │                    │
                                                        │           ┌────────┴─────────┐
                                                        ▼           ▼                  ▼
@@ -29,7 +29,7 @@ The agent ranks and compares airports on that, explains why, and says clearly wh
   It has no logic; it only calls the backend.
 - **backend/main.py** – FastAPI: conversations, chat, voice transcription.
 - **backend/agent/** – ADK `Agent` + system prompt + the automatic number check.
-- **backend/tools/** – the 6 tools the LLM can call. They return plain JSON.
+- **backend/tools/** – the 7 tools the LLM can call. They return plain JSON.
 - **backend/scoring/** – all the math. No LLM here.
 - **etl/** – scripts that turned large BTS / OurAirports downloads into small tables (`data/processed/`).
 - Everything runs with `docker compose up` (PostgreSQL, backend, frontend).
@@ -116,7 +116,7 @@ and the weights used are always returned and shown.
 
 | AI does | AI does not |
 |---|---|
-| Understand free-text questions, map names to codes ("LA" → LAX, mention BUR/LGB/ONT) and regions to states | Compute any score, rank or metric |
+| Understand free-text questions, map names to codes ("LA" → LAX, mention BUR/LGB/ONT) and regions to states | Compute any score, rank, metric or difference ("how many more" → `compare_numbers`) |
 | Choose the tool and its arguments (states, weights) | Choose weights unless the user asks |
 | Explain results: what drives the score, what to invest in, caveats | Make up numbers (see the check below) |
 | Add general background, **labeled** "General knowledge (not from our data)" | |
@@ -129,9 +129,11 @@ and the weights used are always returned and shown.
    say so when no tool can answer; write numbers exactly as tools return them.
 2. **Automatic number check** (`backend/agent/verification.py`, two ADK callbacks): every number a tool returns
    is remembered; every number in the final answer must match one (1% tolerance; 0–10, numbers from the question and
-   from the instructions are allowed). Otherwise a visible warning is added to the answer. Deterministic code, not a second LLM.
-3. **Deterministic explanations** – `confidence_reason`, warnings and `data_notes` come from the tools, so the LLM
-   repeats facts instead of guessing them.
+   from the instructions are allowed, and so is the difference between two data numbers shown in the same answer,
+   e.g. "0.5 points higher" for 8.7% vs 8.2%). Otherwise a visible warning is added to the answer. Deterministic code, not a second LLM.
+3. **Deterministic explanations** – `confidence_reason`, warnings and `data_notes` come from the tools, and every
+   metric is labeled with its component and side (airside/landside), so the LLM repeats facts instead of guessing them.
+   Arithmetic goes through `compare_numbers`, which only accepts numbers that earlier tools returned.
 4. **Answer shape by question type** – full structure (bottom line, numbers, why, assumptions & sources, confidence,
    follow-ups) for analysis questions; short natural replies for follow-ups, concepts, small talk and out-of-scope
    questions. Whenever numbers appear, their source and confidence must appear too.

@@ -10,7 +10,13 @@ import requests
 
 from backend.config import BASELINE_YEAR, DATA_YEAR, MIN_PASSENGERS, WEIGHTS
 from backend.scoring.metrics import build_metrics
-from backend.scoring.scores import COMPONENTS, confidence_reason, score_airports
+from backend.scoring.scores import (
+    AIRSIDE_METRICS,
+    COMPONENTS,
+    LANDSIDE_METRICS,
+    confidence_reason,
+    score_airports,
+)
 
 API_ERROR = {
     "error": "Could not get data from the US DOT API right now. Please try again in a minute."
@@ -31,7 +37,21 @@ DATA_NOTES = [
     "Total, airside and landside scores (and components built from several metrics) "
     "are averages of those percentiles (0-100), "
     "so they are NOT a share of airports - higher just means stronger pressure.",
+    # Which metrics make up which score - built from the code, so the explanation always matches it.
+    "Each component is the average of its metrics' percentiles: "
+    + "; ".join(f"{name} = {', '.join(metrics)}" for name, metrics in COMPONENTS.items()) + ".",
+    f"Airside pressure (runways, airspace) = {', '.join(AIRSIDE_METRICS)}. "
+    f"Landside pressure (terminal, passengers) = {', '.join(LANDSIDE_METRICS)}.",
 ]
+
+
+def side_of(metric):
+    """Which side of the airport a metric describes: airside, landside or neither."""
+    if metric in AIRSIDE_METRICS:
+        return "airside"
+    if metric in LANDSIDE_METRICS:
+        return "landside"
+    return "neither"
 
 
 def plain(value):
@@ -91,11 +111,20 @@ def airport_summary(row):
 
 
 def airport_details(row):
-    """The long version: summary + every raw metric with its percentile."""
+    """
+    The long version: summary + every raw metric with its percentile.
+    Each metric also says which component and which side it belongs to,
+    so the LLM explains a score only with the metrics that are really in it.
+    """
     details = airport_summary(row)
     details["metrics"] = {
-        metric: {"value": plain(row[metric]), "percentile": plain(row[f"{metric}_pctl"])}
-        for metrics in COMPONENTS.values()
+        metric: {
+            "value": plain(row[metric]),
+            "percentile": plain(row[f"{metric}_pctl"]),
+            "component": component,
+            "side": side_of(metric),
+        }
+        for component, metrics in COMPONENTS.items()
         for metric in metrics
     }
     return details
