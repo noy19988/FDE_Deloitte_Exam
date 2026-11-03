@@ -11,6 +11,7 @@ Run from the project root:
 
 import pandas as pd
 
+from backend.config import CODE_ALIASES
 from backend.db.database import engine
 
 # table name -> file it comes from
@@ -24,6 +25,7 @@ TABLES = {
 def load_aviation_data():
     for table, path in TABLES.items():
         data = pd.read_csv(path, dtype={"code": str})
+        data["code"] = data["code"].replace(CODE_ALIASES)  # old airport codes -> current ones
         # if_exists="replace": drop the old table and create it again.
         data.to_sql(table, engine, if_exists="replace", index=False)
         print(f"Loaded {len(data)} rows into '{table}'")

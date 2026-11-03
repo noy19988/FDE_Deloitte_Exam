@@ -22,6 +22,22 @@ API_ERROR = {
     "error": "Could not get data from the US DOT API right now. Please try again in a minute."
 }
 
+# What each metric means (as calculated in scoring/metrics.py and etl/delays.py),
+# so the LLM explains the metric we really computed instead of guessing from its name.
+METRIC_DEFINITIONS = {
+    "load_factor_pct": f"passengers / seats in {DATA_YEAR} (how full the planes are)",
+    "departures_per_runway": f"{DATA_YEAR} departures / open runways of at least 5,000 ft",
+    "vs_peak_pct": f"{DATA_YEAR} passengers / the busiest YEAR from 2014 to {DATA_YEAR - 1} "
+                   "(above 100 = a new record year; it is not about months or departures)",
+    "growth_vs_baseline_pct": f"change in passengers, {DATA_YEAR} vs {BASELINE_YEAR} (before COVID)",
+    "growth_vs_last_year_pct": f"change in passengers, {DATA_YEAR} vs {DATA_YEAR - 1}",
+    "avg_taxi_out_min": "average minutes from leaving the gate to take-off",
+    "nas_delay_pct": "share of arriving flights delayed by the National Airspace System (weather, traffic volume)",
+    "cancel_pct": "share of departing flights that were cancelled",
+    "passengers": f"departing passengers in {DATA_YEAR}",
+    "fare_premium_pct": "how much more expensive fares are than in comparable markets",
+}
+
 # Where every number comes from - the agent shows this to the user.
 DATA_NOTES = [
     f"All {DATA_YEAR} numbers are actual reported data, not projections.",
@@ -42,6 +58,7 @@ DATA_NOTES = [
     + "; ".join(f"{name} = {', '.join(metrics)}" for name, metrics in COMPONENTS.items()) + ".",
     f"Airside pressure (runways, airspace) = {', '.join(AIRSIDE_METRICS)}. "
     f"Landside pressure (terminal, passengers) = {', '.join(LANDSIDE_METRICS)}.",
+    "Metric definitions: " + "; ".join(f"{name} = {meaning}" for name, meaning in METRIC_DEFINITIONS.items()) + ".",
 ]
 
 

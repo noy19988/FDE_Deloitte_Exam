@@ -34,6 +34,11 @@ BASELINE_YEAR = 2019
 # (tiny airports give misleading numbers, e.g. "+100% growth" from 10 to 20 passengers).
 MIN_PASSENGERS = 100_000
 
+# Airports whose code changed: old code -> current code.
+# Some sources still use the old one (West Palm Beach became DJT, but the On-Time files,
+# T-100 Segment and the fares table still say PBI) - without this, they do not join.
+CODE_ALIASES = {"PBI": "DJT"}
+
 # How much each component counts in the total score (adds up to 100).
 WEIGHTS = {
     "capacity_pressure": 30,

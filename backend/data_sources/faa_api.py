@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 
 import requests
 
+from backend.config import CODE_ALIASES
+
 STATUS_URL = "https://nasstatus.faa.gov/api/airport-status-information"
 
 
@@ -34,6 +36,9 @@ def get_live_status(airport_code):
     response.raise_for_status()
     root = ET.fromstring(response.text)
 
+    # The FAA may still use an airport's old code (e.g. PBI for DJT).
+    codes = {airport_code} | {old for old, new in CODE_ALIASES.items() if new == airport_code}
+
     events = []
     # The XML has one <Delay_type> block per kind of event
     # (Ground Stop Programs, Ground Delay Programs, Airport Closures...).
@@ -42,7 +47,7 @@ def get_live_status(airport_code):
 
         # Inside each block, every airport entry has an <ARPT> tag with the airport code.
         for entry in delay_type.iter():
-            if entry.findtext("ARPT") != airport_code:
+            if entry.findtext("ARPT") not in codes:
                 continue
 
             # Keep the other fields as text (Reason, Avg, Max...).

@@ -13,7 +13,7 @@ import requests
 from google.adk.tools import ToolContext
 
 from backend.agent.verification import is_known
-from backend.config import DATA_YEAR, LONG_HAUL_MIN_FLIGHTS, MIN_PASSENGERS, TARGET_LOAD_FACTOR_PCT, WEIGHTS
+from backend.config import CODE_ALIASES, DATA_YEAR, LONG_HAUL_MIN_FLIGHTS, MIN_PASSENGERS, TARGET_LOAD_FACTOR_PCT, WEIGHTS
 from backend.data_sources.dot_api import get_yearly_traffic
 from backend.data_sources.faa_api import get_live_status
 from backend.db.database import engine
@@ -28,12 +28,17 @@ from backend.tools.common import (
 )
 
 
+def current_code(code):
+    """"pbi" -> "DJT": upper case, and an old airport code becomes the current one."""
+    return CODE_ALIASES.get(code.upper(), code.upper())
+
+
 def not_found(code):
     """
     Why an airport is not in our scored data.
     If it is a real airport that is just too small, say so with its real number.
     """
-    code = code.upper()
+    code = current_code(code)
     try:
         traffic = get_yearly_traffic()
         this_year = traffic[(traffic["code"] == code) & (traffic["year"] == DATA_YEAR)]
@@ -119,7 +124,7 @@ def compare_airports(codes: list[str]) -> dict:
 
     airports = []
     for code in codes:
-        match = scored[scored["code"] == code.upper()]
+        match = scored[scored["code"] == current_code(code)]
         airports.append(not_found(code) if match.empty else airport_details(match.iloc[0]))
 
     return {"airports": airports, "data_notes": DATA_NOTES}
@@ -139,7 +144,7 @@ def get_airport_profile(code: str) -> dict:
     if scored is None:
         return API_ERROR
 
-    match = scored[scored["code"] == code.upper()]
+    match = scored[scored["code"] == current_code(code)]
     if match.empty:
         return not_found(code)
     return {**airport_details(match.iloc[0]), "data_notes": DATA_NOTES}
@@ -157,7 +162,7 @@ def long_haul_share(code: str) -> dict:
         code: 3-letter airport code, e.g. "ANC".
     """
     routes = pd.read_sql_table("route_stats", engine)
-    match = routes[routes["code"] == code.upper()]
+    match = routes[routes["code"] == current_code(code)]
     if match.empty:
         return not_found(code)
     route = match.iloc[0]
@@ -170,7 +175,7 @@ def long_haul_share(code: str) -> dict:
         confidence, reason = "Medium", f"only {flights:,} flights in {DATA_YEAR}, so a few routes change the share a lot"
 
     return {
-        "code": code.upper(),
+        "code": current_code(code),
         "year": DATA_YEAR,
         **special.long_haul_share(route),
         "confidence": confidence,
@@ -202,7 +207,7 @@ def unmet_demand(code: str) -> dict:
     if scored is None:
         return API_ERROR
 
-    match = scored[scored["code"] == code.upper()]
+    match = scored[scored["code"] == current_code(code)]
     if match.empty:
         return not_found(code)
     airport = match.iloc[0]
@@ -262,12 +267,12 @@ def live_status(code: str) -> dict:
         code: 3-letter airport code, e.g. "SFO".
     """
     try:
-        events = get_live_status(code.upper())
+        events = get_live_status(current_code(code))
     except requests.RequestException:
         return {"error": "Could not reach the FAA status service right now."}
 
     return {
-        "code": code.upper(),
+        "code": current_code(code),
         "events": events,
         "summary": "No current FAA delays or closures." if not events else f"{len(events)} active event(s).",
         "data_notes": ["Source: FAA National Airspace System status (live)."],

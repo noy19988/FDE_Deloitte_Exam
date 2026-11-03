@@ -13,7 +13,7 @@ and we get back a small table.
 import pandas as pd
 import requests
 
-from backend.config import DATA_YEAR
+from backend.config import CODE_ALIASES, DATA_YEAR
 
 # T-100 summary by origin airport (monthly, from 2014).
 TRAFFIC_URL = "https://data.bts.gov/resource/r495-tyji.json"
@@ -66,4 +66,5 @@ def get_fare_premiums():
 
     # The API gives a fraction (0.10); we use percent (10.0).
     data["fare_premium_pct"] = (pd.to_numeric(data["fare_premium"]) * 100).round(1)
+    data["code"] = data["code"].replace(CODE_ALIASES)  # the fares table still uses old codes
     return data[["code", "fare_premium_pct"]]
