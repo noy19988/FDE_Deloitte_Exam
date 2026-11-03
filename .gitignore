@@ -1,0 +1,13 @@
+# Secrets - never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Raw downloaded files (large, can be re-downloaded)
+data/raw/
+
+# OS
+.DS_Store

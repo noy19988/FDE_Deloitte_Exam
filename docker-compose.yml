@@ -1,0 +1,51 @@
+services:
+  # PostgreSQL: aviation tables + saved conversations.
+  db:
+    image: postgres:16
+    environment:
+      # From .env if filled in, otherwise "airport" (the same defaults as backend/config.py).
+      POSTGRES_USER: ${POSTGRES_USER:-airport}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airport}
+      POSTGRES_DB: ${POSTGRES_DB:-airport}
+    ports:
+      # Your computer's port 5433 -> port 5432 inside the container.
+      # (5433, because a local PostgreSQL may already use 5432.)
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # "Healthy" = PostgreSQL is ready to accept connections.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 2s
+      retries: 15
+
+  # FastAPI + the ADK agent.
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      # Inside Docker, the database is reached by its service name.
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy  # wait until PostgreSQL is ready
+
+  # Streamlit UI - open http://localhost:8501
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
