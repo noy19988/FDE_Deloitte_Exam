@@ -5,16 +5,16 @@ Two ADK callbacks (functions ADK calls for us at fixed moments):
 1. remember_tool_numbers - after every tool call: save the numbers the tool returned.
 2. check_answer_numbers  - before the final answer goes out: every number in the
    answer must be one of the saved numbers (or the difference between two numbers
-   from the data shown in the same answer). If not, a warning is added to the answer.
+   from the data shown in the same answer). If not, the numbers are written to the
+   server log (docker compose logs backend) - the user does not see it.
 
 This check is plain code (deterministic) - no LLM involved.
 """
 
+import logging
 import re
 from itertools import combinations
 from pathlib import Path
-
-from google.genai import types
 
 # A number like 62, 62.1, 907,956 (the minus sign is ignored on purpose:
 # in "0-100" the "-" is a dash, not a minus).
@@ -28,6 +28,9 @@ SMALL_NUMBERS = set(range(0, 11))
 
 # Numbers in the agent's own instructions (e.g. "0-100", "50 states") are allowed too.
 INSTRUCTIONS_TEXT = (Path(__file__).parent / "instructions.md").read_text()
+
+# Where unmatched numbers are reported (the backend log, not the chat).
+logger = logging.getLogger(__name__)
 
 
 def numbers_in_text(text):
@@ -85,7 +88,7 @@ def remember_tool_numbers(tool, args, tool_context, tool_response):
 
 
 def check_answer_numbers(callback_context, llm_response):
-    """Before the final answer goes out: warn about numbers that came from nowhere."""
+    """Before the final answer goes out: log numbers that came from nowhere."""
     parts = llm_response.content.parts if llm_response.content else []
 
     # If the model is asking for a tool, this is not the final answer yet.
@@ -107,14 +110,7 @@ def check_answer_numbers(callback_context, llm_response):
     # and came from our data (e.g. "LAX is 0.5 points higher" for 8.7% vs 8.2%).
     shown = [number for number in numbers_in_text(answer) if is_known(number, known)]
     unknown = [number for number in unknown_numbers(answer, known) if not is_difference(number, shown)]
-    if not unknown:
-        return None  # None = send the answer as it is
-
-    listed = ", ".join(readable(n) for n in unknown)
-    warning = (
-        "\n\n---\n"
-        f"⚠️ **Automatic check:** these numbers could not be matched to our data: {listed}. "
-        "Please treat them with caution."
-    )
-    parts.append(types.Part(text=warning))
-    return llm_response  # the answer, with the warning added at the end
+    if unknown:
+        logger.warning("Automatic check: numbers not found in the tool results: %s",
+                       ", ".join(readable(n) for n in unknown))
+    return None  # None = send the answer as it is

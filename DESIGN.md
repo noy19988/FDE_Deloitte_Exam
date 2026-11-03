@@ -130,7 +130,8 @@ and the weights used are always returned and shown.
 2. **Automatic number check** (`backend/agent/verification.py`, two ADK callbacks): every number a tool returns
    is remembered; every number in the final answer must match one (1% tolerance; 0–10, numbers from the question and
    from the instructions are allowed, and so is the difference between two data numbers shown in the same answer,
-   e.g. "0.5 points higher" for 8.7% vs 8.2%). Otherwise a visible warning is added to the answer. Deterministic code, not a second LLM.
+   e.g. "0.5 points higher" for 8.7% vs 8.2%). Otherwise the numbers are written to the backend log (not shown in the chat, to keep answers clean).
+   Deterministic code, not a second LLM.
 3. **Deterministic explanations** – `confidence_reason`, warnings and `data_notes` come from the tools, and every
    metric is labeled with its component and side (airside/landside), so the LLM repeats facts instead of guessing them.
    Arithmetic goes through `compare_numbers`, which only accepts numbers that earlier tools returned.

@@ -20,7 +20,8 @@ import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8001")
 
-# How the backend's automatic number check starts its warning (always English).
+# Older answers may end with a warning from the automatic number check.
+# The check now writes to the server log instead, so we do not show this part.
 WARNING_START = "⚠️ **Automatic check:**"
 
 # Shown in an empty chat: what this agent is for (no ready-made questions).
@@ -103,17 +104,10 @@ def text_box(text, key):
 
 
 def show_message(text, key):
-    """
-    Show one chat message in its language's direction.
-    The automatic number check (backend/agent/verification.py) adds an English
-    warning at the end - it gets its own box, so it stays left-to-right
-    even under a Hebrew answer.
-    """
-    answer, found, warning = text.partition(WARNING_START)
+    """Show one chat message in its language's direction (without an old number-check warning)."""
+    answer = text.partition(WARNING_START)[0].rstrip().removesuffix("---").rstrip()
     with text_box(answer, key):
         st.markdown(answer)
-    if found:
-        st.markdown(WARNING_START + warning)
 
 
 # --- Page setup ---
