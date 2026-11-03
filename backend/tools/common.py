@@ -22,6 +22,30 @@ API_ERROR = {
     "error": "Could not get data from the US DOT API right now. Please try again in a minute."
 }
 
+# How each metric is called in an answer (plain words, not the field name).
+METRIC_LABELS = {
+    "load_factor_pct": "load factor",
+    "departures_per_runway": "departures per runway",
+    "vs_peak_pct": "passengers vs peak year",
+    "growth_vs_baseline_pct": f"growth vs {BASELINE_YEAR}",
+    "growth_vs_last_year_pct": "growth vs last year",
+    "avg_taxi_out_min": "taxi-out time",
+    "nas_delay_pct": "airspace (NAS) delays",
+    "cancel_pct": "cancellations",
+    "passengers": "departing passengers",
+    "fare_premium_pct": "fare premium",
+}
+
+
+def label(name):
+    """Plain words for a metric or component: "load_factor_pct" -> "load factor"."""
+    return METRIC_LABELS.get(name, name.replace("_", " "))
+
+
+def labels(names):
+    return ", ".join(label(name) for name in names)
+
+
 # What each metric means (as calculated in scoring/metrics.py and etl/delays.py),
 # so the LLM explains the metric we really computed instead of guessing from its name.
 METRIC_DEFINITIONS = {
@@ -55,10 +79,11 @@ DATA_NOTES = [
     "so they are NOT a share of airports - higher just means stronger pressure.",
     # Which metrics make up which score - built from the code, so the explanation always matches it.
     "Each component is the average of its metrics' percentiles: "
-    + "; ".join(f"{name} = {', '.join(metrics)}" for name, metrics in COMPONENTS.items()) + ".",
-    f"Airside pressure (runways, airspace) = {', '.join(AIRSIDE_METRICS)}. "
-    f"Landside pressure (terminal, passengers) = {', '.join(LANDSIDE_METRICS)}.",
-    "Metric definitions: " + "; ".join(f"{name} = {meaning}" for name, meaning in METRIC_DEFINITIONS.items()) + ".",
+    + "; ".join(f"{label(name)} = {labels(metrics)}" for name, metrics in COMPONENTS.items()) + ".",
+    f"Airside pressure (runways, airspace) = {labels(AIRSIDE_METRICS)}. "
+    f"Landside pressure (terminal, passengers) = {labels(LANDSIDE_METRICS)}.",
+    "Metric definitions: " + "; ".join(f"{label(name)} = {meaning}" for name, meaning in METRIC_DEFINITIONS.items()) + ".",
+    "In answers, call metrics and components by these plain names - never by their field names.",
 ]
 
 
@@ -136,9 +161,10 @@ def airport_details(row):
     details = airport_summary(row)
     details["metrics"] = {
         metric: {
+            "name": label(metric),  # how to call it in the answer
             "value": plain(row[metric]),
             "percentile": plain(row[f"{metric}_pctl"]),
-            "component": component,
+            "component": label(component),
             "side": side_of(metric),
         }
         for component, metrics in COMPONENTS.items()

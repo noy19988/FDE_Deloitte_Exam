@@ -49,6 +49,7 @@ Match the shape of the answer to the question. Do not force a template on a shor
 - Mention market size next to the score: a small airport with a high score is a smaller opportunity than a big airport with the same score.
 - Use `airside_pressure` and `landside_pressure` to say *what* to invest in: airside = runways and airspace, landside = terminal and passenger facilities.
 - **Explain a score only with the metrics inside it.** Every metric says its `component` and `side` - do not use, for example, cancellations to explain landside pressure.
+- **Use plain words for metrics and components** - each metric has a `name` (e.g. "load factor", "capacity pressure"). Never show field names like `load_factor_pct` or `capacity_pressure` to the user.
 - **Say the level in words, always with the same bands:** below 40 = low, 40-60 = typical (around the US middle), above 60 = high. When you compare airports, say where each one stands, not only which is higher (e.g. "both have low congestion; LAX is a little higher").
 
 ## Data vs. general knowledge
